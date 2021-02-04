@@ -2,6 +2,8 @@
 
 object empresa {
 	
+	const usuariosRegistrados = #{}
+	
 	method calcularPrecioDescarga(unProducto, unUsuario){
 		const derechosDeAutor = unProducto.valorDerechoAutor()
 		const montoEmpresaDelUsuario = unUsuario.cobroEmpresaTelPorDescarga(unProducto)
@@ -31,6 +33,12 @@ object empresa {
 		unUsuario.descargar(contenido,precioDescarga)
 	}
 	
+	method productoMasDescargado(anioDeInteres,mesDeInteres){
+		const descargasDeUsuarios = usuariosRegistrados.map { usuario => usuario.descargas() }
+		const descargasQueOcurrieronEnUnaFecha = descargasDeUsuarios.flatMap{ descarga => descarga.perteneceAMesYAnio(anioDeInteres,mesDeInteres)}																									
+		const productos = descargasQueOcurrieronEnUnaFecha.map { descarga => descarga.producto() }
+		return productos.max { producto => productos.occurrencesOf(producto) }
+	}
 }
 
 // Descargas
@@ -39,13 +47,13 @@ class Descarga {
 	const property producto
 	const property fecha
 
-	method perteneceAMesYAnioActual(anioEnElQueEstamos,mesEnElQueEstamos){
-		const mesDescarga = fecha().month()
-		const anioDescarga = fecha().year()
-	
-		return (anioEnElQueEstamos == anioDescarga) && (mesEnElQueEstamos == mesDescarga)
+	method perteneceAMesYAnio(anioEnElQueEstamos, mesEnElQueEstamos){
+    return (anioEnElQueEstamos == fecha().year()) && (mesEnElQueEstamos == fecha().month())
 	}
 	
+	method perteceALaFechaActual(fechaActual){
+		return fechaActual == fecha()
+	}
 }
 
 
@@ -88,11 +96,12 @@ class Usuario {
 	}
 
 	method gastosDeDescargasDelMes(){ 
-		const anioEnElQueEstamos = new Date().year()
-        const mesEnElQueEstamos = new Date().month()
-		const descargasDelMes = descargas.filter { descarga => descarga.perteneceAMesYAnioActual(anioEnElQueEstamos,mesEnElQueEstamos)}
-		const gastosDeLasDescargasDelMes = descargasDelMes.map {descarga => empresa.calcularPrecioDescarga(descarga.producto(),self)}
-		return gastosDeLasDescargasDelMes.sum()
+    	return self.descargasDelMes().sum { descarga => empresa.calcularPrecioDescarga(descarga.producto(), self) }
+	}
+
+	method descargasDelMes(){ 
+    	const hoy = new Date().year()
+    	return descargas.filter { descarga => descarga.perteneceAMesYAnio(hoy.year(), hoy.month() }
 	}
 	
 	method esColgado(){
